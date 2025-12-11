@@ -327,6 +327,7 @@
             background: #fef2f2;
             border-left: 4px solid #ef4444;
             color: #991b1b;
+            line-height: 1.6;
         }
 
         .error.active {
@@ -349,15 +350,6 @@
             cursor: pointer;
             transition: all 0.2s ease;
             border: none;
-        }
-
-        .btn-primary {
-            background: #3b82f6;
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: #2563eb;
         }
 
         .btn-secondary {
@@ -546,20 +538,21 @@
             errorDiv.classList.remove('active');
             results.classList.remove('active');
 
-            // Try multiple model endpoints in order of preference
-            const modelEndpoints = [
-                'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',
-                'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent',
-                'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent'
+            // Try models in order: latest experimental, stable versions
+            const models = [
+                'gemini-2.0-flash-exp',
+                'gemini-1.5-flash',
+                'gemini-1.5-pro'
             ];
 
             let lastError = null;
 
-            for (const apiUrl of modelEndpoints) {
+            for (const model of models) {
                 try {
-                    console.log(`Trying endpoint: ${apiUrl}`);
+                    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+                    console.log(`Trying model: ${model}`);
                     
-                    const response = await fetch(`${apiUrl}?key=${API_KEY}`, {
+                    const response = await fetch(`${API_URL}?key=${API_KEY}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -585,38 +578,39 @@
                     
                     if (data.error) {
                         lastError = data.error.message;
-                        console.error(`Error with ${apiUrl}:`, data.error);
-                        continue; // Try next endpoint
+                        console.error(`Error with ${model}:`, data.error);
+                        continue;
                     }
 
-                    // Success! Process the result
+                    // Success!
                     const resultText = data.candidates[0].content.parts[0].text;
                     
                     const jsonMatch = resultText.match(/\{[\s\S]*\}/);
                     if (jsonMatch) {
                         const colorData = JSON.parse(jsonMatch[0]);
                         displayResults(colorData);
-                        return; // Exit the function on success
+                        return;
                     } else {
-                        throw new Error('Invalid response format from AI');
+                        throw new Error('Invalid response format');
                     }
 
                 } catch (error) {
-                    console.error(`Failed with ${apiUrl}:`, error);
+                    console.error(`Failed with ${model}:`, error);
                     lastError = error.message;
-                    continue; // Try next endpoint
+                    continue;
                 }
             }
 
-            // If we get here, all endpoints failed
+            // All models failed
             errorDiv.innerHTML = `
                 <strong>Unable to connect to Gemini API</strong><br><br>
-                Error: ${lastError}<br><br>
-                <strong>Possible solutions:</strong><br>
-                1. Check if your API key is valid<br>
-                2. Enable the "Generative Language API" in Google Cloud Console<br>
-                3. Make sure billing is enabled for your Google Cloud project<br>
-                4. Visit: <a href="https://makersuite.google.com/app/apikey" target="_blank">https://makersuite.google.com/app/apikey</a>
+                <strong>Error:</strong> ${lastError}<br><br>
+                <strong>Your API key may not be enabled yet. Please:</strong><br>
+                1. Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #3b82f6;">Google AI Studio</a><br>
+                2. Create a new API key<br>
+                3. Make sure "Generative Language API" is enabled<br>
+                4. Replace the API key in this file (line 373)<br><br>
+                If you just created the API key, wait 1-2 minutes for it to activate.
             `;
             errorDiv.classList.add('active');
             loading.classList.remove('active');
