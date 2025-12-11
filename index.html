@@ -1,1 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Intelligence - AI Color Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 20px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .logo {
+            font-size: 2.8em;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+            letter-spacing: -1px;
+        }
+
+        .tagline {
+            color: #6b7280;
+            font-size: 1.1em;
+            font-weight: 400;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+
+        .upload-section {
+            padding: 60px 40px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .upload-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+
+        .upload-area:hover {
+            background: #f9fafb;
+            border-color: #3b82f6;
+        }
+
+        .upload-area.dragover {
+            background: #eff6ff;
+            border-color: #3b82f6;
+            border-width: 3px;
+        }
+
+        .upload-icon {
+            width: 64px;
+            height: 64px;
+            margin: 0 auto 20px;
+            background: #f3f4f6;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+        }
+
+        .upload-text {
+            color: #1f2937;
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .upload-subtext {
+            color: #9ca3af;
+            font-size: 0.95em;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .preview-section {
+            display: none;
+            padding: 40px;
+        }
+
+        .preview-section.active {
+            display: block;
+        }
+
+        .preview-container {
+            display: flex;
+            gap: 40px;
+            align-items: flex-start;
+        }
+
+        .image-container {
+            flex: 1;
+            max-width: 600px;
+        }
+
+        .image-preview {
+            width: 100%;
+            height: auto;
+            max-height: 500px;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+        }
+
+        .controls {
+            flex-shrink: 0;
+            width: 300px;
+        }
+
+        .analyze-btn {
+            width: 100%;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            font-size: 1.05em;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .analyze-btn:hover {
+            background: #2563eb;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .info-box {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f9fafb;
+            border-radius: 10px;
+            border-left: 4px solid #3b82f6;
+        }
+
+        .info-title {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        .info-text {
+            color: #6b7280;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+
+        .loading {
+            display: none;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #e5e7eb;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #6b7280;
+            font-size: 1.05em;
+        }
+
+        .results {
+            display: none;
+            padding: 40px;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .results-header {
+            margin-bottom: 32px;
+        }
+
+        .results-title {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #1a1a2e;
+            margin-bottom: 8px;
+        }
+
+        .results-subtitle {
+            color: #6b7280;
+            font-size: 1em;
+        }
+
+        .colors-section {
+            margin-bottom: 40px;
+        }
+
+        .section-label {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+
+        .colors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 20px;
+        }
+
+        .color-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .color-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            border-color: #d1d5db;
+        }
+
+        .color-swatch {
+            height: 100px;
+            width: 100%;
+            position: relative;
+        }
+
+        .color-info {
+            padding: 16px;
+        }
+
+        .color-name {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 0.95em;
+            margin-bottom: 4px;
+        }
+
+        .color-hex {
+            font-size: 0.85em;
+            color: #6b7280;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .color-description {
+            font-size: 0.82em;
+            color: #9ca3af;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+
+        .analysis-section {
+            background: #f9fafb;
+            padding: 32px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .analysis-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+
+        .analysis-text {
+            color: #4b5563;
+            line-height: 1.7;
+            font-size: 1em;
+        }
+
+        .error {
+            display: none;
+            padding: 20px 40px;
+            background: #fef2f2;
+            border-left: 4px solid #ef4444;
+            color: #991b1b;
+        }
+
+        .error.active {
+            display: block;
+        }
+
+        .actions {
+            padding: 32px 40px;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            font-size: 1em;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #4b5563;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        @media (max-width: 768px) {
+            .preview-container {
+                flex-direction: column;
+            }
+
+            .controls {
+                width: 100%;
+            }
+
+            .colors-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .logo {
+                font-size: 2em;
+            }
+        }
+
+        .copy-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #1f2937;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .copy-notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">Color Intelligence</div>
+        <div class="tagline">AI-Powered Color Detection & Analysis</div>
+    </div>
+
+    <div class="container">
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Upload an image</div>
+                <div class="upload-subtext">Click to browse or drag and drop your file here</div>
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <div class="preview-container">
+                <div class="image-container">
+                    <img id="imagePreview" class="image-preview" alt="Preview">
+                </div>
+                <div class="controls">
+                    <button class="analyze-btn" id="analyzeBtn">Analyze Colors</button>
+                    <div class="info-box">
+                        <div class="info-title">How it works</div>
+                        <div class="info-text">Our AI will analyze your image and identify the dominant colors, providing detailed information about each color's presence and significance.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <div class="loading-text">Analyzing image colors...</div>
+        </div>
+
+        <div class="error" id="error"></div>
+
+        <div class="results" id="results">
+            <div class="results-header">
+                <div class="results-title">Color Analysis Results</div>
+                <div class="results-subtitle">Detected colors and insights from your image</div>
+            </div>
+
+            <div class="colors-section">
+                <div class="section-label">Detected Colors</div>
+                <div class="colors-grid" id="colorsGrid"></div>
+            </div>
+
+            <div class="analysis-section">
+                <div class="analysis-title">Color Scheme Analysis</div>
+                <div class="analysis-text" id="analysisText"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="actions" id="actions" style="display: none;">
+        <button class="btn btn-secondary" id="resetBtn">Analyze Another Image</button>
+    </div>
+
+    <div class="copy-notification" id="copyNotification">Hex code copied!</div>
+
+    <script>
+        const API_KEY = 'AIzaSyASDyGqjaBqGDUqjN2vA-NjCtBEEPvNLgs';
+        const API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
+        let currentImageData = null;
+
+        const uploadSection = document.getElementById('uploadSection');
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewSection = document.getElementById('previewSection');
+        const imagePreview = document.getElementById('imagePreview');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const colorsGrid = document.getElementById('colorsGrid');
+        const analysisText = document.getElementById('analysisText');
+        const actions = document.getElementById('actions');
+        const resetBtn = document.getElementById('resetBtn');
+        const errorDiv = document.getElementById('error');
+        const copyNotification = document.getElementById('copyNotification');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        function handleFile(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentImageData = e.target.result.split(',')[1];
+                imagePreview.src = e.target.result;
+                uploadSection.style.display = 'none';
+                previewSection.classList.add('active');
+                results.classList.remove('active');
+                actions.style.display = 'none';
+                errorDiv.classList.remove('active');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        analyzeBtn.addEventListener('click', analyzeColors);
+
+        async function analyzeColors() {
+            if (!currentImageData) return;
+
+            previewSection.style.display = 'none';
+            loading.classList.add('active');
+            errorDiv.classList.remove('active');
+            results.classList.remove('active');
+
+            try {
+                const response = await fetch(`${API_URL}?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                {
+                                    text: "Analyze this image and identify the 5-8 most prominent colors. For each color provide: 1) A descriptive color name (e.g., 'Ocean Blue', 'Sunset Orange'), 2) The hex code, 3) A brief description of where it appears. Then provide a 2-3 sentence analysis of the overall color scheme, mood, and aesthetic. Respond ONLY with valid JSON in this exact format: {\"colors\": [{\"name\": \"Descriptive Name\", \"hex\": \"#HEXCODE\", \"description\": \"location description\"}], \"analysis\": \"overall analysis text\"}"
+                                },
+                                {
+                                    inline_data: {
+                                        mime_type: "image/jpeg",
+                                        data: currentImageData
+                                    }
+                                }
+                            ]
+                        }]
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
+                const resultText = data.candidates[0].content.parts[0].text;
+                
+                const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    const colorData = JSON.parse(jsonMatch[0]);
+                    displayResults(colorData);
+                } else {
+                    throw new Error('Invalid response format from AI');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                errorDiv.textContent = `Error: ${error.message}. Please try again.`;
+                errorDiv.classList.add('active');
+                loading.classList.remove('active');
+                previewSection.style.display = 'block';
+            }
+        }
+
+        function displayResults(colorData) {
+            colorsGrid.innerHTML = '';
+            
+            if (colorData.colors && colorData.colors.length > 0) {
+                colorData.colors.forEach(color => {
+                    const colorCard = document.createElement('div');
+                    colorCard.className = 'color-card';
+                    colorCard.innerHTML = `
+                        <div class="color-swatch" style="background-color: ${color.hex}"></div>
+                        <div class="color-info">
+                            <div class="color-name">${color.name}</div>
+                            <div class="color-hex">${color.hex}</div>
+                            ${color.description ? `<div class="color-description">${color.description}</div>` : ''}
+                        </div>
+                    `;
+                    
+                    colorCard.addEventListener('click', () => {
+                        copyToClipboard(color.hex);
+                    });
+                    
+                    colorsGrid.appendChild(colorCard);
+                });
+            }
+
+            if (colorData.analysis) {
+                analysisText.textContent = colorData.analysis;
+            }
+
+            loading.classList.remove('active');
+            results.classList.add('active');
+            actions.style.display = 'flex';
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                copyNotification.classList.add('show');
+                setTimeout(() => {
+                    copyNotification.classList.remove('show');
+                }, 2000);
+            });
+        }
+
+        resetBtn.addEventListener('click', () => {
+            currentImageData = null;
+            fileInput.value = '';
+            uploadSection.style.display = 'block';
+            previewSection.classList.remove('active');
+            previewSection.style.display = 'none';
+            results.classList.remove('active');
+            actions.style.display = 'none';
+            errorDiv.classList.remove('active');
+            loading.classList.remove('active');
+        });
+    </script>
+</body>
+</html>
