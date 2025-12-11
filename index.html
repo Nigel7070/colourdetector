@@ -477,8 +477,6 @@
 
     <script>
         const API_KEY = 'AIzaSyASDyGqjaBqGDUqjN2vA-NjCtBEEPvNLgs';
-        // Using v1 endpoint with gemini-1.5-flash model
-        const API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent';
 
         let currentImageData = null;
 
@@ -548,52 +546,81 @@
             errorDiv.classList.remove('active');
             results.classList.remove('active');
 
-            try {
-                const response = await fetch(`${API_URL}?key=${API_KEY}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                {
-                                    text: "Analyze this image and identify the 5-8 most prominent colors. For each color provide: 1) A descriptive color name (e.g., 'Ocean Blue', 'Sunset Orange'), 2) The hex code, 3) A brief description of where it appears. Then provide a 2-3 sentence analysis of the overall color scheme, mood, and aesthetic. Respond ONLY with valid JSON in this exact format: {\"colors\": [{\"name\": \"Descriptive Name\", \"hex\": \"#HEXCODE\", \"description\": \"location description\"}], \"analysis\": \"overall analysis text\"}"
-                                },
-                                {
-                                    inline_data: {
-                                        mime_type: "image/jpeg",
-                                        data: currentImageData
+            // Try multiple model endpoints in order of preference
+            const modelEndpoints = [
+                'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent',
+                'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent',
+                'https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent'
+            ];
+
+            let lastError = null;
+
+            for (const apiUrl of modelEndpoints) {
+                try {
+                    console.log(`Trying endpoint: ${apiUrl}`);
+                    
+                    const response = await fetch(`${apiUrl}?key=${API_KEY}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            contents: [{
+                                parts: [
+                                    {
+                                        text: "Analyze this image and identify the 5-8 most prominent colors. For each color provide: 1) A descriptive color name (e.g., 'Ocean Blue', 'Sunset Orange'), 2) The hex code, 3) A brief description of where it appears. Then provide a 2-3 sentence analysis of the overall color scheme, mood, and aesthetic. Respond ONLY with valid JSON in this exact format: {\"colors\": [{\"name\": \"Descriptive Name\", \"hex\": \"#HEXCODE\", \"description\": \"location description\"}], \"analysis\": \"overall analysis text\"}"
+                                    },
+                                    {
+                                        inline_data: {
+                                            mime_type: "image/jpeg",
+                                            data: currentImageData
+                                        }
                                     }
-                                }
-                            ]
-                        }]
-                    })
-                });
+                                ]
+                            }]
+                        })
+                    });
 
-                const data = await response.json();
-                
-                if (data.error) {
-                    throw new Error(data.error.message);
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        lastError = data.error.message;
+                        console.error(`Error with ${apiUrl}:`, data.error);
+                        continue; // Try next endpoint
+                    }
+
+                    // Success! Process the result
+                    const resultText = data.candidates[0].content.parts[0].text;
+                    
+                    const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+                    if (jsonMatch) {
+                        const colorData = JSON.parse(jsonMatch[0]);
+                        displayResults(colorData);
+                        return; // Exit the function on success
+                    } else {
+                        throw new Error('Invalid response format from AI');
+                    }
+
+                } catch (error) {
+                    console.error(`Failed with ${apiUrl}:`, error);
+                    lastError = error.message;
+                    continue; // Try next endpoint
                 }
-
-                const resultText = data.candidates[0].content.parts[0].text;
-                
-                const jsonMatch = resultText.match(/\{[\s\S]*\}/);
-                if (jsonMatch) {
-                    const colorData = JSON.parse(jsonMatch[0]);
-                    displayResults(colorData);
-                } else {
-                    throw new Error('Invalid response format from AI');
-                }
-
-            } catch (error) {
-                console.error('Error:', error);
-                errorDiv.textContent = `Error: ${error.message}. Please try again.`;
-                errorDiv.classList.add('active');
-                loading.classList.remove('active');
-                previewSection.style.display = 'block';
             }
+
+            // If we get here, all endpoints failed
+            errorDiv.innerHTML = `
+                <strong>Unable to connect to Gemini API</strong><br><br>
+                Error: ${lastError}<br><br>
+                <strong>Possible solutions:</strong><br>
+                1. Check if your API key is valid<br>
+                2. Enable the "Generative Language API" in Google Cloud Console<br>
+                3. Make sure billing is enabled for your Google Cloud project<br>
+                4. Visit: <a href="https://makersuite.google.com/app/apikey" target="_blank">https://makersuite.google.com/app/apikey</a>
+            `;
+            errorDiv.classList.add('active');
+            loading.classList.remove('active');
+            previewSection.style.display = 'block';
         }
 
         function displayResults(colorData) {
